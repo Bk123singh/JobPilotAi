@@ -44,27 +44,28 @@ JobPilot AI replaces static search filters with an autonomous **Agentic Percepti
 
 ```mermaid
 flowchart TD
-    subgraph P [1. Perception & Ingestion]
-        J[New / Updated Job Postings] --> Ingest[Data Ingestion Agent]
-        R[Candidate Resumes & Skills] --> Ingest
-        M[Market-Wide Skill Demand] --> Ingest
+
+    subgraph P["1. Perception & Ingestion"]
+        J["New / Updated Job Postings"] --> Ingest["Data Ingestion Agent"]
+        R["Candidate Resumes & Skills"] --> Ingest
+        M["Market-Wide Skill Demand"] --> Ingest
     end
 
-    subgraph RZ [2. Agentic Reasoning & Evaluation]
-        Ingest --> Norm[Tech Synonym Normalizer\n(e.g., 'react.js' -> 'react')]
-        Norm --> Engine[5-Pillar Compatibility Engine]
-        Engine --> Gap[Skill Gap & Score Uplift Predictor]
-        Engine --> Tier[Qualification Tier Classifier\n(Exceptional / Strong / Moderate / Low)]
+    subgraph RZ["2. Agentic Reasoning & Evaluation"]
+        Ingest --> Norm["Tech Synonym Normalizer<br/>react.js → react"]
+        Norm --> Engine["5-Pillar Compatibility Engine"]
+        Engine --> Gap["Skill Gap & Score Uplift Predictor"]
+        Engine --> Tier["Qualification Tier Classifier<br/>Exceptional / Strong / Moderate / Low"]
     end
 
-    subgraph A [3. Autonomous Actions & Tool Execution]
-        Gap --> Alert[Candidate Co-Pilot: Trigger Match Alerts & Skill Recommendations]
-        Tier --> Rank[Recruiter Co-Pilot: Auto-Rank Applicants on Kanban Board]
-        Rank --> Scheduler[Interview Coordinator: Generate Google Meet & Auto-Advance Stage]
+    subgraph A["3. Autonomous Actions & Tool Execution"]
+        Gap --> Alert["Candidate Co-Pilot<br/>Match Alerts & Skill Recommendations"]
+        Tier --> Rank["Recruiter Co-Pilot<br/>Auto-Rank Applicants on Kanban"]
+        Rank --> Scheduler["Interview Coordinator<br/>Google Meet & Auto-Advance Stage"]
     end
 
-    subgraph F [4. Feedback & Uplift Loop]
-        Alert -->|Candidate Upskills & Updates Profile| Ingest
+    subgraph F["4. Feedback & Uplift Loop"]
+        Alert -->|"Candidate Upskills & Updates Profile"| Ingest
     end
 ```
 
