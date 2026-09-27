@@ -7,6 +7,7 @@ An agentic AI-powered recruitment platform connecting top talent with high-growt
   <img src="https://img.shields.io/badge/Backend-Node.js_%7C_Express_4-22c55e?style=flat-square&logo=node.js" alt="Backend" />
   <img src="https://img.shields.io/badge/Database-PostgreSQL_%7C_Prisma_5-6366f1?style=flat-square&logo=prisma" alt="Database" />
   <img src="https://img.shields.io/badge/Auth-JWT_Access_%2B_Refresh_Cookies-f59e0b?style=flat-square&logo=jsonwebtokens" alt="Auth" />
+  <img src="https://img.shields.io/badge/Architecture-Agentic_AI_%26_Modular_Monolith-ec4899?style=flat-square" alt="Architecture" />
   <img src="https://img.shields.io/badge/License-ISC-gray?style=flat-square" alt="License" />
 </p>
 
@@ -16,6 +17,7 @@ An agentic AI-powered recruitment platform connecting top talent with high-growt
 
 - **🎯 Deterministic 5-Pillar Matching**: Calculates transparent 0–100% compatibility scores between candidate profiles and job requirements.
 - **💡 Skill Gap Intelligence**: Identifies missing skills and predicts exact match score improvements (e.g., `+8% boost by adding Docker`).
+- **🤖 Autonomous Agentic Workflow**: Proactive candidate alerts, automated applicant tier ranking, and interview room generation.
 - **📋 Recruiter Kanban Pipeline**: Drag-and-drop or 1-tap applicant progression across 6 stages (`APPLIED` → `UNDER_REVIEW` → `SHORTLISTED` → `INTERVIEW` → `OFFER` → `REJECTED`).
 - **📄 Multi-Version Resume Management**: Upload multiple resumes, set primary defaults, and manage privacy (`PRIVATE`, `APPLICATION_ONLY`, `RECRUITER_VISIBLE`).
 - **📅 Automated Interview Scheduling**: Schedule screening, technical, and final interviews with integrated Google Meet links.
@@ -36,28 +38,50 @@ The platform supports 3 dedicated user roles with strict Role-Based Access Contr
 
 ---
 
-## 🔄 How It Works
+## 🤖 How the Agentic AI Works & Its Workflow
+
+JobPilot AI replaces static search filters with an autonomous **Agentic Perception-Reasoning-Action Loop** that works continuously on behalf of both candidates and recruiters:
 
 ```mermaid
 flowchart TD
-    subgraph S1 [1. Discovery & Matching]
-        R1[Recruiter Posts Job with Skills & Criteria] --> Engine[5-Pillar Matching Engine]
-        C1[Candidate Uploads Resume & Skills] --> Engine
-        Engine --> Score[Transparent Match Score & Skill Gap Advice]
+    subgraph P [1. Perception & Ingestion]
+        J[New / Updated Job Postings] --> Ingest[Data Ingestion Agent]
+        R[Candidate Resumes & Skills] --> Ingest
+        M[Market-Wide Skill Demand] --> Ingest
     end
 
-    subgraph S2 [2. Application & Tracking]
-        Score --> Apply[Candidate Applies with 1-Click]
-        Apply --> Kanban[Recruiter Reviews Candidate on Kanban Board]
+    subgraph RZ [2. Agentic Reasoning & Evaluation]
+        Ingest --> Norm[Tech Synonym Normalizer\n(e.g., 'react.js' -> 'react')]
+        Norm --> Engine[5-Pillar Compatibility Engine]
+        Engine --> Gap[Skill Gap & Score Uplift Predictor]
+        Engine --> Tier[Qualification Tier Classifier\n(Exceptional / Strong / Moderate / Low)]
     end
 
-    subgraph S3 [3. Interview & Hiring]
-        Kanban --> Schedule[Recruiter Schedules Interview]
-        Schedule --> Meet[Google Meet Video Link Generated & Sent]
-        Schedule --> StatusUpdate[Application Advances to INTERVIEW Stage]
-        StatusUpdate --> Offer[Offer Extended or Final Decision]
+    subgraph A [3. Autonomous Actions & Tool Execution]
+        Gap --> Alert[Candidate Co-Pilot: Trigger Match Alerts & Skill Recommendations]
+        Tier --> Rank[Recruiter Co-Pilot: Auto-Rank Applicants on Kanban Board]
+        Rank --> Scheduler[Interview Coordinator: Generate Google Meet & Auto-Advance Stage]
+    end
+
+    subgraph F [4. Feedback & Uplift Loop]
+        Alert -->|Candidate Upskills & Updates Profile| Ingest
     end
 ```
+
+### The 3 Autonomous Agent Roles
+
+1. **Candidate Career Co-Pilot Agent**:
+   - **Continuous Job Monitoring**: Evaluates every new job against the candidate's profile, parsed resumes, and workplace preferences.
+   - **Market Skill Gap Advisory**: Analyzes open market requirements to highlight missing skills that offer the highest score uplift (e.g., *"Adding Docker can boost your match score by +8% across active roles"*).
+   - **Proactive Alerts & Digests**: Triggers in-app alerts and email notifications only when a job meets the candidate's personalized match score threshold (e.g. $\ge 75\%$).
+
+2. **Recruiter Talent Co-Pilot Agent**:
+   - **Automated Screening & Tiering**: Instantly ranks incoming applicants into qualification tiers (`EXCEPTIONAL`, `STRONG`, `MODERATE`, `LOW`) using normalized technical skill overlap.
+   - **Pipeline Automation**: Auto-advances candidates across the Kanban pipeline (e.g., moving an applicant directly to the `INTERVIEW` stage upon meeting scheduling).
+   - **Interview Coordination**: Automatically provisions interview meeting rooms (Google Meet) and notifies both candidate and recruiter with calendar metadata.
+
+3. **Autonomous Learning & Feedback Loop**:
+   - When a candidate acts on the agent's recommendation and adds a skill to their profile, the agent immediately re-computes scores across all market openings, updating recommendations in real time.
 
 ---
 
@@ -78,6 +102,19 @@ Job compatibility is calculated deterministically across 5 weighted pillars:
 - 🔵 **Strong Match**: 70% – 84%
 - 🟡 **Moderate Match**: 50% – 69%
 - ⚪ **Low Match**: Below 50%
+
+---
+
+## 🔄 End-to-End Application Workflow
+
+```mermaid
+flowchart LR
+    A[Recruiter Posts Job] --> B[AI Computes Match Scores]
+    B --> C[Candidate Applies with 1-Click]
+    C --> D[Recruiter Evaluates on Kanban]
+    D --> E[Schedule Interview + Google Meet]
+    E --> F[Offer Extended or Decision]
+```
 
 ---
 
@@ -166,7 +203,7 @@ git init
 git add .
 
 # 3. Create initial commit
-git commit -m "feat: complete JobPilot AI platform with 5-pillar matching and role consoles"
+git commit -m "feat: complete JobPilot AI platform with agentic workflows and 5-pillar matching"
 
 # 4. Set main branch
 git branch -M main
