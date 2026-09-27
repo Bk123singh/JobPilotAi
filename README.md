@@ -192,29 +192,6 @@ JobPilot AI/
 
 ---
 
-## 🚀 Uploading to Git / GitHub
-
-To push this project to your GitHub repository:
-
-```bash
-# 1. Initialize git
-git init
-
-# 2. Stage all files (.gitignore protects secrets and node_modules)
-git add .
-
-# 3. Create initial commit
-git commit -m "feat: complete JobPilot AI platform with agentic workflows and 5-pillar matching"
-
-# 4. Set main branch
-git branch -M main
-
-# 5. Link your GitHub repository
-git remote add origin https://github.com/<your-username>/<your-repo-name>.git
-
-# 6. Push to GitHub
-git push -u origin main
-```
 
 ---
 
