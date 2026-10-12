@@ -94,41 +94,59 @@ class ResumeService {
     const isAdmin = requestingUser.role === 'ADMIN';
     const isRecruiter = requestingUser.role === 'RECRUITER';
 
-    // Owner and Admin always have full access
+    // 1. Owner and Admin always have full access
     if (!isOwner && !isAdmin) {
+      // 2. Candidate trying to view another candidate's resume -> FORBIDDEN
       if (!isRecruiter) {
-        throw AppError.forbidden('You do not have permission to access this resume');
+        throw AppError.forbidden('Access denied. You do not have permission to view other candidates\' resumes.');
       }
 
-      // If recruiter, check candidate's resume privacy setting
-      if (resume.visibility === 'PRIVATE') {
-        throw AppError.forbidden('This candidate has set their resume to Private');
-      }
+      // 3. Recruiter access: STRICT CHECK
+      // A recruiter can ONLY view this resume if the candidate has submitted an application
+      // to a job posted by this recruiter or their company.
+      let hasApplication = false;
 
-      if (resume.visibility === 'APPLICATION_ONLY') {
-        // Must verify that candidate applied to a job created by this recruiter
-        let hasApplication = false;
+      if (isDbLive) {
+        const recruiter = await prisma.recruiter.findUnique({
+          where: { userId: requestingUser.id },
+        });
 
-        if (isDbLive) {
-          const app = await prisma.application.findFirst({
-            where: {
-              resumeId: resume.id,
-              job: { recruiterId: requestingUser.recruiter?.id },
+        if (!recruiter) {
+          throw AppError.forbidden('Access denied. Only registered recruiters can view applicant resumes.');
+        }
+
+        const app = await prisma.application.findFirst({
+          where: {
+            OR: [
+              { resumeId: resume.id },
+              { candidateId: resume.userId },
+            ],
+            job: {
+              OR: [
+                { recruiterId: recruiter.id },
+                ...(recruiter.companyId ? [{ companyId: recruiter.companyId }] : []),
+              ],
             },
-          });
-          hasApplication = !!app;
-        } else {
-          // Dev / in-memory mode: allow recruiter to preview application
-          hasApplication = true;
-        }
-
-        if (!hasApplication) {
-          throw AppError.forbidden(
-            'This resume is APPLICATION_ONLY. Candidate has not applied to your openings.'
-          );
+          },
+        });
+        hasApplication = !!app;
+      } else {
+        const { memoryApplications } = require('../applications/applicationService');
+        if (memoryApplications) {
+          for (const app of memoryApplications.values()) {
+            if (app.resumeId === resume.id || app.candidateId === resume.userId) {
+              hasApplication = true;
+              break;
+            }
+          }
         }
       }
-      // If RECRUITER_VISIBLE, verified recruiters can view
+
+      if (!hasApplication) {
+        throw AppError.forbidden(
+          'Access denied. Recruiters can only access resumes of candidates who have applied to their job postings.'
+        );
+      }
     }
 
     // Record sensitive resume access in AuditLog

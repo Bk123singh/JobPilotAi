@@ -30,7 +30,7 @@ const updateMyProfile = async (req, res, next) => {
 
 const getPublicProfile = async (req, res, next) => {
   try {
-    const profile = await profileService.getPublicProfile(req.params.userId);
+    const profile = await profileService.getPublicProfile(req.params.userId, req.user);
     return successResponse(res, 200, { profile }, 'Candidate profile retrieved');
   } catch (error) {
     next(error);

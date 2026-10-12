@@ -44,8 +44,8 @@ const getMyApplications = async (req, res, next) => {
  */
 const getApplicationDetail = async (req, res, next) => {
   try {
-    const application = await applicationService.getCandidateApplicationById(
-      req.user.id,
+    const application = await applicationService.getApplicationDetail(
+      req.user,
       req.params.id
     );
     return successResponse(res, 200, { application }, 'Application details retrieved');

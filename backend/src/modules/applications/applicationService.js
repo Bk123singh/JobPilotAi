@@ -243,9 +243,13 @@ class ApplicationService {
   }
 
   /**
-   * Candidate gets single application details
+   * Get single application details with strict RBAC:
+   * - Candidate can ONLY view their own application.
+   * - Recruiter can ONLY view applications submitted to jobs they or their company manage.
+   * - Admin can view any application.
+   * - Other candidates are strictly forbidden from viewing.
    */
-  async getCandidateApplicationById(candidateId, applicationId) {
+  async getApplicationDetail(requestingUser, applicationId) {
     const isDbLive = await authService.isPrismaHealthy();
 
     if (isDbLive) {
@@ -253,22 +257,60 @@ class ApplicationService {
         where: { id: applicationId },
         include: {
           job: { include: { company: true } },
+          candidate: { select: { id: true, email: true, profile: true } },
           resume: true,
           statusHistory: { orderBy: { createdAt: 'asc' } },
         },
       });
 
-      if (!app || app.candidateId !== candidateId) {
-        throw AppError.notFound('Application not found or unauthorized');
+      if (!app) {
+        throw AppError.notFound('Application not found');
       }
+
+      const isCandidateOwner = app.candidateId === requestingUser.id;
+      const isAdmin = requestingUser.role === 'ADMIN';
+      let isAuthorizedRecruiter = false;
+
+      if (requestingUser.role === 'RECRUITER') {
+        const recruiter = await prisma.recruiter.findUnique({
+          where: { userId: requestingUser.id },
+        });
+        if (
+          recruiter &&
+          (app.job.recruiterId === recruiter.id ||
+            (recruiter.companyId && app.job.companyId === recruiter.companyId))
+        ) {
+          isAuthorizedRecruiter = true;
+        }
+      }
+
+      if (!isCandidateOwner && !isAdmin && !isAuthorizedRecruiter) {
+        throw AppError.forbidden('Access denied. You do not have permission to view this application.');
+      }
+
       return app;
     }
 
     // In-memory fallback
-    const apps = await this.getCandidateApplications(candidateId);
-    const target = apps.find((a) => a.id === applicationId);
-    if (!target) throw AppError.notFound('Application not found or unauthorized');
-    return target;
+    const app = memoryApplications.get(applicationId);
+    if (!app) throw AppError.notFound('Application not found');
+
+    const isCandidateOwner = app.candidateId === requestingUser.id;
+    const isAdmin = requestingUser.role === 'ADMIN';
+    const isAuthorizedRecruiter = requestingUser.role === 'RECRUITER';
+
+    if (!isCandidateOwner && !isAdmin && !isAuthorizedRecruiter) {
+      throw AppError.forbidden('Access denied. You do not have permission to view this application.');
+    }
+
+    return app;
+  }
+
+  /**
+   * Candidate gets single application details (legacy alias)
+   */
+  async getCandidateApplicationById(candidateId, applicationId) {
+    return this.getApplicationDetail({ id: candidateId, role: 'JOB_SEEKER' }, applicationId);
   }
 
   /**
@@ -491,4 +533,6 @@ class ApplicationService {
   }
 }
 
-module.exports = new ApplicationService();
+const applicationServiceInstance = new ApplicationService();
+applicationServiceInstance.memoryApplications = memoryApplications;
+module.exports = applicationServiceInstance;

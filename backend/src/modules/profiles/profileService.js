@@ -136,7 +136,28 @@ class ProfileService {
         where: { userId },
         include: {
           user: {
-            select: { id: true, email: true, role: true, avatarUrl: true, isEmailVerified: true },
+            select: {
+              id: true,
+              email: true,
+              role: true,
+              avatarUrl: true,
+              isEmailVerified: true,
+              resumes: {
+                where: { userId },
+                select: {
+                  id: true,
+                  title: true,
+                  fileUrl: true,
+                  fileType: true,
+                  fileSize: true,
+                  isPrimary: true,
+                  version: true,
+                  qualityScore: true,
+                  createdAt: true,
+                },
+                orderBy: [{ isPrimary: 'desc' }, { createdAt: 'desc' }],
+              },
+            },
           },
         },
       });
@@ -161,9 +182,11 @@ class ProfileService {
       }
 
       const metrics = this.calculateCompleteness(profile);
+      const resumes = profile.user?.resumes || [];
 
       return {
         ...profile,
+        resumes,
         ...metrics,
       };
     }
@@ -215,8 +238,11 @@ class ProfileService {
     }
 
     const metrics = this.calculateCompleteness(profile);
+    const resumeService = require('../resumes/resumeService');
+    const resumes = await resumeService.listUserResumes(userId);
     return {
       ...profile,
+      resumes,
       ...metrics,
     };
   }
@@ -409,11 +435,109 @@ class ProfileService {
   }
 
   /**
-   * Get public candidate profile (for authorized recruiters)
+   * Get public candidate profile with strict privacy:
+   * - A user can view their own profile.
+   * - An admin can view any profile.
+   * - A recruiter can ONLY view profiles of candidates who have applied to one of their job postings.
+   * - Another job seeker can NEVER view another candidate's profile.
    */
-  async getPublicProfile(targetUserId) {
+  async getPublicProfile(targetUserId, requestingUser) {
+    const isOwner = requestingUser && requestingUser.id === targetUserId;
+    const isAdmin = requestingUser && requestingUser.role === 'ADMIN';
+    const isRecruiter = requestingUser && requestingUser.role === 'RECRUITER';
+
+    if (!isOwner && !isAdmin) {
+      if (!isRecruiter) {
+        throw AppError.forbidden('Access denied. Job seekers cannot view other candidates\' profile sections.');
+      }
+
+      // Check if candidate applied to any job posted by this recruiter or their company
+      const isDbLive = await authService.isPrismaHealthy();
+      let hasApplication = false;
+
+      if (isDbLive) {
+        const recruiter = await prisma.recruiter.findUnique({
+          where: { userId: requestingUser.id },
+        });
+
+        if (!recruiter) {
+          throw AppError.forbidden('Access denied. Only registered recruiters can view applicant candidate profiles.');
+        }
+
+        const app = await prisma.application.findFirst({
+          where: {
+            candidateId: targetUserId,
+            job: {
+              OR: [
+                { recruiterId: recruiter.id },
+                ...(recruiter.companyId ? [{ companyId: recruiter.companyId }] : []),
+              ],
+            },
+          },
+        });
+        hasApplication = !!app;
+      } else {
+        const { memoryApplications } = require('../applications/applicationService');
+        if (memoryApplications) {
+          for (const app of memoryApplications.values()) {
+            if (app.candidateId === targetUserId) {
+              hasApplication = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!hasApplication) {
+        throw AppError.forbidden(
+          'Access denied. Recruiters can only view candidate profiles for applicants who have applied to your job postings.'
+        );
+      }
+    }
+
     const profile = await this.getProfileByUserId(targetUserId);
-    // Strip sensitive fields (like private phone if privacy configured)
+
+    // If viewed by an authorized recruiter, attach ONLY the resume submitted to this recruiter's job
+    let applicantResume = null;
+    if (isRecruiter) {
+      if (isDbLive) {
+        const recruiter = await prisma.recruiter.findUnique({
+          where: { userId: requestingUser.id },
+        });
+        if (recruiter) {
+          const app = await prisma.application.findFirst({
+            where: {
+              candidateId: targetUserId,
+              job: {
+                OR: [
+                  { recruiterId: recruiter.id },
+                  ...(recruiter.companyId ? [{ companyId: recruiter.companyId }] : []),
+                ],
+              },
+            },
+            include: {
+              resume: {
+                select: {
+                  id: true,
+                  title: true,
+                  fileUrl: true,
+                  fileType: true,
+                  fileSize: true,
+                  version: true,
+                  qualityScore: true,
+                  createdAt: true,
+                },
+              },
+            },
+          });
+          applicantResume = app?.resume || null;
+        }
+      } else {
+        applicantResume = profile.resumes?.[0] || null;
+      }
+    }
+
+    // Return sanitized candidate fields (never leaking other candidate resumes)
     return {
       id: profile.userId,
       fullName: profile.fullName,
@@ -427,6 +551,8 @@ class ProfileService {
       certifications: profile.certifications,
       careerPreferences: profile.careerPreferences,
       completenessScore: profile.completenessScore,
+      ...(applicantResume ? { appliedResume: applicantResume } : {}),
+      ...(isOwner ? { resumes: profile.resumes || [] } : {}),
     };
   }
 

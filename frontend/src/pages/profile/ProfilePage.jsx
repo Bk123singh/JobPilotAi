@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { profileApi } from '../../api/profileApi';
+import { resumeApi } from '../../api/resumeApi';
+import { openResumeFile } from '../../utils/fileViewer';
 import { useUIStore } from '../../store/useUIStore';
 import {
   User,
@@ -22,6 +25,9 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
+  FileText,
+  Star,
+  UploadCloud,
 } from 'lucide-react';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -92,6 +98,13 @@ const ProfilePage = () => {
     queryKey: ['myProfile'],
     queryFn: profileApi.getMyProfile,
   });
+
+  // Fetch candidate's own resumes (isolated to current candidate)
+  const { data: resumesData, isLoading: isLoadingResumes } = useQuery({
+    queryKey: ['myResumes'],
+    queryFn: resumeApi.getResumes,
+  });
+  const myResumes = resumesData?.data?.resumes || [];
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -310,6 +323,7 @@ const ProfilePage = () => {
     { id: 'experience', label: 'Experience', icon: Briefcase },
     { id: 'education', label: 'Education', icon: GraduationCap },
     { id: 'projects', label: 'Projects', icon: FolderGit2 },
+    { id: 'resumes', label: 'My Resumes', icon: FileText, badge: myResumes.length },
     { id: 'preferences', label: 'Preferences', icon: Sliders },
   ];
 
@@ -398,6 +412,15 @@ const ProfilePage = () => {
             >
               <Icon className="w-4 h-4" />
               <span>{tab.label}</span>
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span
+                  className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    isActive ? 'bg-brand-100 text-brand-700' : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {tab.badge}
+                </span>
+              )}
             </button>
           );
         })}
@@ -967,7 +990,138 @@ const ProfilePage = () => {
           </Card>
         )}
 
-        {/* 6. CAREER PREFERENCES TAB */}
+        {/* 6. MY RESUMES TAB (Isolated to current candidate) */}
+        {activeTab === 'resumes' && (
+          <Card className="p-6 space-y-6">
+            <CardHeader className="p-0 pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-brand-600" />
+                  My Uploaded Resumes
+                  <Badge variant="brand" size="sm">Private to You</Badge>
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Only you can see your uploaded resumes. Recruiters can only see a resume when you apply to their job opening.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAutofillModal(true)}
+                  className="gap-1.5 text-xs font-semibold"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-brand-600" />
+                  Auto-fill from Resume
+                </Button>
+                <Link to="/resumes">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    className="gap-1.5 text-xs font-semibold"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    Upload / Manage Resumes
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+
+            <div className="space-y-3">
+              {isLoadingResumes ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-20 w-full rounded-2xl" />
+                  <Skeleton className="h-20 w-full rounded-2xl" />
+                </div>
+              ) : myResumes.length === 0 ? (
+                <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mx-auto">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">No resumes uploaded yet</h3>
+                    <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                      Upload your resume in PDF or DOCX format to auto-fill your profile sections and enable 1-tap applications.
+                    </p>
+                  </div>
+                  <Link to="/resumes">
+                    <Button variant="primary" size="sm" className="mt-2">
+                      <UploadCloud className="w-4 h-4 mr-1.5" />
+                      Upload Your First Resume
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                myResumes.map((resume) => (
+                  <div
+                    key={resume.id}
+                    className="p-4 rounded-2xl border border-slate-200/90 bg-white hover:border-brand-200 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-bold text-sm text-slate-900">{resume.title}</h3>
+                          {resume.isPrimary && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-300">
+                              <Star className="w-3 h-3 fill-amber-600 text-amber-600" />
+                              Primary Resume
+                            </span>
+                          )}
+                          <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                            v{resume.version || 1}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          Uploaded {new Date(resume.createdAt).toLocaleDateString()}
+                          {resume.fileSize ? ` • ${(resume.fileSize / 1024).toFixed(0)} KB` : ''}
+                        </p>
+                        {resume.qualityScore && (
+                          <p className="text-xs text-emerald-600 font-semibold flex items-center gap-1 pt-0.5">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            {resume.qualityScore}% ATS Quality Score
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-start sm:self-center border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 w-full sm:w-auto justify-end">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setShowAutofillModal(true);
+                        }}
+                        className="text-xs min-h-[36px]"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 mr-1 text-brand-600" />
+                        Auto-fill Profile
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openResumeFile(resume.secureViewUrl || resume.fileUrl)}
+                        className="text-xs min-h-[36px]"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                        View File
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* 7. CAREER PREFERENCES TAB */}
         {activeTab === 'preferences' && (
           <Card className="p-6 space-y-6">
             <CardHeader className="p-0 pb-4 border-b border-slate-100">
