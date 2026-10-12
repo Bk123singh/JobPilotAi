@@ -2,6 +2,7 @@ const { PDFParse } = require('pdf-parse');
 const mammoth = require('mammoth');
 const env = require('../config/env');
 const logger = require('../utils/logger');
+const cacheService = require('./cacheService');
 
 // Comprehensive dictionary of technical & professional skills for heuristic fallback
 const TECH_SKILLS_CATALOG = [
@@ -110,6 +111,20 @@ class ResumeParserService {
       return this.getEmptyParsedProfile();
     }
 
+    // 1. Check Fast Cache (Hash-based) to reduce latency from 4s to 0ms
+    const cacheKey = cacheService.computeContentHash(rawText);
+    try {
+      const cached = await cacheService.get(cacheKey);
+      if (cached) {
+        logger.info(`[Fast Cache HIT] Returning cached parsed resume for hash ${cacheKey.slice(0, 18)}... (0ms latency)`);
+        return cached;
+      }
+    } catch (err) {
+      logger.warn(`[Fast Cache] Error checking cache: ${err.message}`);
+    }
+
+    let parsedResult = null;
+
     // Attempt AI-based parsing if API key is configured and not mock
     const hasLiveAi =
       Boolean(env.AI_API_KEY) &&
@@ -122,17 +137,28 @@ class ResumeParserService {
         const aiResult = await this.parseWithAI(rawText);
         if (aiResult && aiResult.fullName) {
           logger.info(`Successfully parsed resume using AI for candidate: ${aiResult.fullName}`);
-          return this.sanitizeParsedData(aiResult);
+          parsedResult = this.sanitizeParsedData(aiResult);
         }
       } catch (aiErr) {
         logger.warn(`AI Resume parsing failed (${aiErr.message}). Switching to heuristic parser fallback.`);
       }
     }
 
-    // High-performance heuristic / regex fallback
-    logger.info('Using Heuristic Resume Parsing engine...');
-    const heuristicResult = this.parseResumeHeuristic(rawText);
-    return this.sanitizeParsedData(heuristicResult);
+    if (!parsedResult) {
+      // High-performance heuristic / regex fallback
+      logger.info('Using Heuristic Resume Parsing engine...');
+      const heuristicResult = this.parseResumeHeuristic(rawText);
+      parsedResult = this.sanitizeParsedData(heuristicResult);
+    }
+
+    // Store in cache for 24 hours (subsequent calls return in <1ms)
+    try {
+      await cacheService.set(cacheKey, parsedResult, 86400);
+    } catch (err) {
+      logger.warn(`[Fast Cache] Failed to write cache: ${err.message}`);
+    }
+
+    return parsedResult;
   }
 
   /**

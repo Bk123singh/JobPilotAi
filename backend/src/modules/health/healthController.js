@@ -1,5 +1,6 @@
 const { successResponse } = require('../../utils/responseUtils');
 const { prisma } = require('../../config/db');
+const cacheService = require('../../services/cacheService');
 
 const getHealth = async (req, res, next) => {
   try {
@@ -19,6 +20,7 @@ const getHealth = async (req, res, next) => {
       timestamp: new Date().toISOString(),
       services: {
         database: dbStatus,
+        cache: cacheService.getDriverName(),
         api: 'healthy',
       },
     }, 'JobPilot AI API is healthy');

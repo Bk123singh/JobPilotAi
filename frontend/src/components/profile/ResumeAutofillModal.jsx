@@ -257,36 +257,36 @@ const ResumeAutofillModal = ({ isOpen, onClose, onProfileUpdated }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200/80 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-900/60 backdrop-blur-sm overflow-hidden animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full max-h-[92vh] sm:max-h-[88vh] flex flex-col shadow-2xl border border-slate-200/80 overflow-hidden">
         {/* Header */}
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-brand-50/60 via-white to-slate-50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-md shadow-brand-500/20">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-brand-50/60 via-white to-slate-50 flex-shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-md shadow-brand-500/20 flex-shrink-0">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900">Auto-Fill Profile with Resume</h2>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">Auto-Fill Profile with Resume</h2>
                 <Badge variant="brand" size="sm">
                   AI Powered
                 </Badge>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 hidden sm:block">
                 Extract your work history, skills, education, and contact details in seconds.
               </p>
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+            className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 overscroll-contain">
           {!parsedData && !isParsing && (
             <div className="space-y-4">
               {/* Selector Tabs */}
@@ -429,7 +429,7 @@ const ResumeAutofillModal = ({ isOpen, onClose, onProfileUpdated }) => {
                   <Layers className="w-3.5 h-3.5 text-brand-600" />
                   Profile Update Strategy
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <label
                     className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer text-xs transition-all ${
                       strategy === 'MERGE'
@@ -486,7 +486,7 @@ const ResumeAutofillModal = ({ isOpen, onClose, onProfileUpdated }) => {
                     <User className="w-4 h-4 text-brand-600" />
                     Personal & Contact Info
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
                     <div>
                       <span className="text-slate-400">Name: </span>
                       <span className="font-medium text-slate-900">{parsedData.fullName || '—'}</span>
@@ -562,7 +562,7 @@ const ResumeAutofillModal = ({ isOpen, onClose, onProfileUpdated }) => {
                 </div>
 
                 {/* 4. Education & Projects */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="p-3 rounded-xl border border-slate-200/80 bg-white">
                     <p className="text-xs font-bold text-slate-800 mb-1 flex items-center gap-1.5">
                       <GraduationCap className="w-3.5 h-3.5 text-brand-600" />
@@ -589,7 +589,7 @@ const ResumeAutofillModal = ({ isOpen, onClose, onProfileUpdated }) => {
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between flex-shrink-0">
           <Button variant="ghost" size="sm" onClick={handleClose}>
             Cancel
           </Button>

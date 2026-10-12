@@ -8,6 +8,8 @@ const env = {
   PORT: parseInt(process.env.PORT || '5000', 10),
   DATABASE_URL: process.env.DATABASE_URL || '',
   REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
+  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL || '',
+  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN || '',
   
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'dev_access_secret_change_in_prod',
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret_change_in_prod',

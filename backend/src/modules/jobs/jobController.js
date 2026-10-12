@@ -1,5 +1,6 @@
 const jobService = require('./jobService');
 const { successResponse, createdResponse } = require('../../utils/responseUtils');
+const cacheService = require('../../services/cacheService');
 
 const listJobs = async (req, res, next) => {
   try {
@@ -31,6 +32,9 @@ const createJob = async (req, res, next) => {
       userAgent
     );
 
+    // Invalidate cached jobs
+    await cacheService.delPattern('http:/api/v1/jobs*');
+
     return createdResponse(res, { job }, 'Job posted successfully');
   } catch (error) {
     next(error);
@@ -50,6 +54,9 @@ const updateJob = async (req, res, next) => {
       userAgent
     );
 
+    // Invalidate cached jobs
+    await cacheService.delPattern('http:/api/v1/jobs*');
+
     return successResponse(res, 200, { job }, 'Job updated successfully');
   } catch (error) {
     next(error);
@@ -67,6 +74,9 @@ const closeJob = async (req, res, next) => {
       ipAddress,
       userAgent
     );
+
+    // Invalidate cached jobs
+    await cacheService.delPattern('http:/api/v1/jobs*');
 
     return successResponse(res, 200, { job }, 'Job closed successfully');
   } catch (error) {

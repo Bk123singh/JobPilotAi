@@ -256,175 +256,187 @@ const ResumesPage = () => {
 
       {/* Upload Modal / Drawer */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <div className="w-9 h-9 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-900/60 backdrop-blur-sm overflow-hidden animate-in fade-in duration-150">
+          <div className="w-full max-w-xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Modal Header (Sticky) */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-white flex-shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0">
                   <UploadCloud className="w-5 h-5" />
                 </div>
-                <h2 className="font-bold text-lg text-slate-900">Upload New Resume</h2>
+                <div>
+                  <h2 className="font-bold text-base sm:text-lg text-slate-900 leading-tight">Upload New Resume</h2>
+                  <p className="text-xs text-slate-500 hidden sm:block">Upload a document to match jobs or auto-fill your profile.</p>
+                </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowUploadModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleUploadSubmit} className="space-y-4">
-              {/* File Dropzone */}
-              <div className="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl p-6 text-center cursor-pointer bg-slate-50/50 transition">
-                <input
-                  type="file"
-                  id="resumeUploadInput"
-                  accept=".pdf,.doc,.docx"
-                  onChange={handleFileChange}
-                  className="hidden"
+            {/* Modal Form */}
+            <form onSubmit={handleUploadSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-4.5 overscroll-contain">
+                {/* File Dropzone */}
+                <div className="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl p-4 sm:p-5 text-center cursor-pointer bg-slate-50/60 hover:bg-brand-50/20 transition-all">
+                  <input
+                    type="file"
+                    id="resumeUploadInput"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <label htmlFor="resumeUploadInput" className="cursor-pointer block space-y-1.5">
+                    <FileText className="w-8 h-8 text-brand-600 mx-auto" />
+                    <div>
+                      <span className="font-bold text-sm text-brand-600 hover:underline">
+                        Click to choose file
+                      </span>{' '}
+                      <span className="text-slate-500 text-sm">or drag here</span>
+                    </div>
+                    <p className="text-xs text-slate-400">PDF, DOC, DOCX (Max 5MB)</p>
+                    {selectedFile && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mt-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="truncate max-w-[200px] sm:max-w-[320px]">{selectedFile.name}</span> ({(selectedFile.size / 1024).toFixed(1)} KB)
+                      </div>
+                    )}
+                  </label>
+                </div>
+
+                <Input
+                  label="Resume Label / Title"
+                  placeholder="e.g. Senior Full-Stack Engineer (Frontend Focus)"
+                  value={uploadTitle}
+                  onChange={(e) => setUploadTitle(e.target.value)}
+                  required
                 />
-                <label htmlFor="resumeUploadInput" className="cursor-pointer block space-y-2">
-                  <FileText className="w-10 h-10 text-brand-600 mx-auto" />
-                  <div>
-                    <span className="font-bold text-sm text-brand-600 hover:underline">
-                      Click to choose file
-                    </span>{' '}
-                    <span className="text-slate-500 text-sm">or drag here</span>
+
+                {/* Privacy Setting Selector */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 tracking-wide uppercase">
+                    Privacy & Visibility
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    <label
+                      className={`p-2.5 rounded-xl border flex flex-col justify-between cursor-pointer transition ${
+                        uploadVisibility === 'APPLICATION_ONLY'
+                          ? 'bg-brand-50/80 border-brand-400 text-brand-900 shadow-xs'
+                          : 'border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <input
+                          type="radio"
+                          name="visibility"
+                          value="APPLICATION_ONLY"
+                          checked={uploadVisibility === 'APPLICATION_ONLY'}
+                          onChange={() => setUploadVisibility('APPLICATION_ONLY')}
+                          className="text-brand-600 mt-0.5"
+                        />
+                        <span className="font-bold text-xs">Application Only</span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 leading-tight">
+                        Only for openings you explicitly apply to.
+                      </span>
+                    </label>
+
+                    <label
+                      className={`p-2.5 rounded-xl border flex flex-col justify-between cursor-pointer transition ${
+                        uploadVisibility === 'RECRUITER_VISIBLE'
+                          ? 'bg-brand-50/80 border-brand-400 text-brand-900 shadow-xs'
+                          : 'border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <input
+                          type="radio"
+                          name="visibility"
+                          value="RECRUITER_VISIBLE"
+                          checked={uploadVisibility === 'RECRUITER_VISIBLE'}
+                          onChange={() => setUploadVisibility('RECRUITER_VISIBLE')}
+                          className="text-brand-600 mt-0.5"
+                        />
+                        <span className="font-bold text-xs">Discoverable</span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 leading-tight">
+                        Verified recruiters can discover your profile.
+                      </span>
+                    </label>
+
+                    <label
+                      className={`p-2.5 rounded-xl border flex flex-col justify-between cursor-pointer transition ${
+                        uploadVisibility === 'PRIVATE'
+                          ? 'bg-brand-50/80 border-brand-400 text-brand-900 shadow-xs'
+                          : 'border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <input
+                          type="radio"
+                          name="visibility"
+                          value="PRIVATE"
+                          checked={uploadVisibility === 'PRIVATE'}
+                          onChange={() => setUploadVisibility('PRIVATE')}
+                          className="text-brand-600 mt-0.5"
+                        />
+                        <span className="font-bold text-xs">Private</span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 leading-tight">
+                        Only you can access this resume.
+                      </span>
+                    </label>
                   </div>
-                  <p className="text-xs text-slate-400">PDF, DOC, DOCX (Max 5MB)</p>
-                  {selectedFile && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mt-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-                    </div>
-                  )}
-                </label>
-              </div>
+                </div>
 
-              <Input
-                label="Resume Label / Title"
-                placeholder="e.g. Senior Full-Stack Engineer (Frontend Focus)"
-                value={uploadTitle}
-                onChange={(e) => setUploadTitle(e.target.value)}
-                required
-              />
-
-              {/* Privacy Setting Selector */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700 tracking-wide uppercase">
-                  Privacy & Visibility
-                </label>
-                <div className="grid grid-cols-1 gap-2 text-xs">
-                  <label
-                    className={`p-3 rounded-xl border flex items-start space-x-3 cursor-pointer transition ${
-                      uploadVisibility === 'APPLICATION_ONLY'
-                        ? 'bg-brand-50/70 border-brand-300 text-brand-900'
-                        : 'border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value="APPLICATION_ONLY"
-                      checked={uploadVisibility === 'APPLICATION_ONLY'}
-                      onChange={() => setUploadVisibility('APPLICATION_ONLY')}
-                      className="mt-0.5 text-brand-600"
-                    />
-                    <div>
-                      <span className="font-bold block">Application Only (Recommended)</span>
-                      <span className="text-slate-500">
-                        Only recruiters whose job openings you explicitly apply for can view this resume.
-                      </span>
-                    </div>
+                {/* Auto-fill Profile Checkbox */}
+                <div className="flex items-start space-x-2.5 p-3 rounded-xl bg-brand-50/60 border border-brand-200/80">
+                  <input
+                    type="checkbox"
+                    id="autoFillProfileCheck"
+                    checked={autoFillProfile}
+                    onChange={(e) => setAutoFillProfile(e.target.checked)}
+                    className="w-4 h-4 text-brand-600 rounded mt-0.5 flex-shrink-0 cursor-pointer"
+                  />
+                  <label htmlFor="autoFillProfileCheck" className="text-xs cursor-pointer">
+                    <span className="font-bold text-brand-900 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-brand-600" />
+                      Auto-fill Profile Sections (Recommended)
+                    </span>
+                    <span className="text-slate-500 block mt-0.5 text-[11px] leading-relaxed">
+                      Extracts your skills, work experience, education, projects, and contact info into your profile automatically.
+                    </span>
                   </label>
+                </div>
 
-                  <label
-                    className={`p-3 rounded-xl border flex items-start space-x-3 cursor-pointer transition ${
-                      uploadVisibility === 'RECRUITER_VISIBLE'
-                        ? 'bg-brand-50/70 border-brand-300 text-brand-900'
-                        : 'border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value="RECRUITER_VISIBLE"
-                      checked={uploadVisibility === 'RECRUITER_VISIBLE'}
-                      onChange={() => setUploadVisibility('RECRUITER_VISIBLE')}
-                      className="mt-0.5 text-brand-600"
-                    />
-                    <div>
-                      <span className="font-bold block">Recruiter Discoverable</span>
-                      <span className="text-slate-500">
-                        Verified recruiters on the platform can discover your resume for relevant matches.
-                      </span>
-                    </div>
-                  </label>
-
-                  <label
-                    className={`p-3 rounded-xl border flex items-start space-x-3 cursor-pointer transition ${
-                      uploadVisibility === 'PRIVATE'
-                        ? 'bg-brand-50/70 border-brand-300 text-brand-900'
-                        : 'border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value="PRIVATE"
-                      checked={uploadVisibility === 'PRIVATE'}
-                      onChange={() => setUploadVisibility('PRIVATE')}
-                      className="mt-0.5 text-brand-600"
-                    />
-                    <div>
-                      <span className="font-bold block">Private</span>
-                      <span className="text-slate-500">
-                        Only you can access this resume. Recruiters cannot see it.
-                      </span>
-                    </div>
+                {/* Set as Primary Checkbox */}
+                <div className="flex items-center space-x-2 pt-0.5">
+                  <input
+                    type="checkbox"
+                    id="primaryCheck"
+                    checked={uploadIsPrimary}
+                    onChange={(e) => setUploadIsPrimary(e.target.checked)}
+                    className="w-4 h-4 text-brand-600 rounded cursor-pointer"
+                  />
+                  <label htmlFor="primaryCheck" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                    Set as my primary default resume
                   </label>
                 </div>
               </div>
 
-              {/* Auto-fill Profile Checkbox */}
-              <div className="flex items-start space-x-2.5 p-3 rounded-xl bg-brand-50/60 border border-brand-200/80">
-                <input
-                  type="checkbox"
-                  id="autoFillProfileCheck"
-                  checked={autoFillProfile}
-                  onChange={(e) => setAutoFillProfile(e.target.checked)}
-                  className="w-4 h-4 text-brand-600 rounded mt-0.5"
-                />
-                <label htmlFor="autoFillProfileCheck" className="text-xs cursor-pointer">
-                  <span className="font-bold text-brand-900 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-brand-600" />
-                    Auto-fill Profile Sections (Recommended)
-                  </span>
-                  <span className="text-slate-500 block mt-0.5">
-                    Automatically extracts your skills, work experience, education, projects, and contact info into your profile.
-                  </span>
-                </label>
-              </div>
-
-              {/* Set as Primary Checkbox */}
-              <div className="flex items-center space-x-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="primaryCheck"
-                  checked={uploadIsPrimary}
-                  onChange={(e) => setUploadIsPrimary(e.target.checked)}
-                  className="w-4 h-4 text-brand-600 rounded"
-                />
-                <label htmlFor="primaryCheck" className="text-xs font-semibold text-slate-700">
-                  Set as my primary default resume
-                </label>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              {/* Modal Footer (Sticky) */}
+              <div className="flex items-center justify-end gap-2.5 p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50 flex-shrink-0">
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => setShowUploadModal(false)}
+                  className="min-h-[38px]"
                 >
                   Cancel
                 </Button>
@@ -432,6 +444,7 @@ const ResumesPage = () => {
                   type="submit"
                   variant="primary"
                   isLoading={uploadMutation.isPending}
+                  className="min-h-[38px] px-5 shadow-sm"
                 >
                   Upload Resume
                 </Button>
@@ -443,46 +456,49 @@ const ResumesPage = () => {
 
       {/* Edit Resume Title & Privacy Modal */}
       {editingResume && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-hidden animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 flex-shrink-0">
               <h3 className="font-bold text-base text-slate-900">Edit Resume Details</h3>
               <button
+                type="button"
                 onClick={() => setEditingResume(null)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleUpdateSubmit} className="space-y-4">
-              <Input
-                label="Resume Title"
-                value={editingResume.title}
-                onChange={(e) =>
-                  setEditingResume({ ...editingResume, title: e.target.value })
-                }
-                required
-              />
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700 uppercase">
-                  Visibility
-                </label>
-                <select
-                  value={editingResume.visibility}
+            <form onSubmit={handleUpdateSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                <Input
+                  label="Resume Title"
+                  value={editingResume.title}
                   onChange={(e) =>
-                    setEditingResume({ ...editingResume, visibility: e.target.value })
+                    setEditingResume({ ...editingResume, title: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-300 p-2.5 text-sm"
-                >
-                  <option value="APPLICATION_ONLY">Application Only</option>
-                  <option value="RECRUITER_VISIBLE">Recruiter Discoverable</option>
-                  <option value="PRIVATE">Private</option>
-                </select>
+                  required
+                />
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase">
+                    Visibility
+                  </label>
+                  <select
+                    value={editingResume.visibility}
+                    onChange={(e) =>
+                      setEditingResume({ ...editingResume, visibility: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="APPLICATION_ONLY">Application Only</option>
+                    <option value="RECRUITER_VISIBLE">Recruiter Discoverable</option>
+                    <option value="PRIVATE">Private</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50 flex-shrink-0">
                 <Button
                   type="button"
                   variant="ghost"

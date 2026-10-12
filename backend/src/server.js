@@ -4,6 +4,7 @@ const morgan = require('morgan');
 const env = require('./config/env');
 const { connectDB, prisma } = require('./config/db');
 const logger = require('./utils/logger');
+const compression = require('compression');
 const { configureSecurity } = require('./middleware/securityMiddleware');
 const { errorMiddleware, notFoundHandler } = require('./middleware/errorMiddleware');
 
@@ -24,6 +25,9 @@ const app = express();
 
 // 1. Security Headers, CORS & Rate Limiting
 configureSecurity(app);
+
+// 1.1 HTTP Gzip/Brotli Compression (drastically reduces latency & payload size)
+app.use(compression());
 
 // 2. Request Parsers
 app.use(express.json({ limit: '10mb' }));
