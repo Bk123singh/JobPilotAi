@@ -21,6 +21,7 @@ import Input from '../../components/common/Input';
 import Card, { CardBody, CardHeader } from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Skeleton from '../../components/common/Skeleton';
+import UserAvatar from '../../components/common/UserAvatar';
 
 const INDUSTRY_OPTIONS = [
   'Software & Technology',
@@ -295,9 +296,7 @@ const CompanyProfilePage = () => {
 
           <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm">
-                {user?.fullName?.charAt(0)?.toUpperCase() || 'R'}
-              </div>
+              <UserAvatar user={user} size="md" />
               <div>
                 <p className="font-bold text-sm text-slate-900">{user?.fullName}</p>
                 <p className="text-xs text-slate-500">{user?.email}</p>

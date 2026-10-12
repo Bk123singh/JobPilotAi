@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
+import UserAvatar from '../common/UserAvatar';
 import NotificationBell from '../notifications/NotificationBell';
 
 const Navbar = () => {
@@ -145,11 +146,9 @@ const Navbar = () => {
                   to={isAdmin ? '/admin' : isRecruiter ? '/recruiter/dashboard' : '/dashboard'}
                   className="hidden sm:inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50 transition"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-xs">
-                    {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
+                  <UserAvatar user={user} size="sm" />
                   <div className="text-left">
-                    <p className="text-xs font-semibold text-slate-900 leading-none truncate max-w-[120px]">
+                    <p className="text-xs font-semibold text-slate-900 leading-none truncate max-w-[130px]">
                       {user?.fullName || 'My Account'}
                     </p>
                     <Badge variant={isRecruiter ? 'purple' : 'brand'} size="sm" className="mt-0.5 text-[10px] px-1.5 py-0">

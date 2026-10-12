@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import Button from '../common/Button';
+import UserAvatar from '../common/UserAvatar';
 
 const MobileDrawer = () => {
   const { mobileDrawerOpen, setMobileDrawerOpen } = useUIStore();
@@ -63,9 +64,7 @@ const MobileDrawer = () => {
         {isAuthenticated && (
           <div className="p-4 bg-slate-50 border-b border-slate-100">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-sm">
-                {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
+              <UserAvatar user={user} size="md" />
               <div className="truncate">
                 <p className="font-semibold text-sm text-slate-900 truncate">{user?.fullName}</p>
                 <p className="text-xs text-slate-500 truncate">{user?.email}</p>

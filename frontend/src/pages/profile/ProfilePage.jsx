@@ -28,6 +28,7 @@ import Input from '../../components/common/Input';
 import Card, { CardBody, CardHeader } from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Skeleton from '../../components/common/Skeleton';
+import UserAvatar from '../../components/common/UserAvatar';
 import SkillGapIntelligenceCard from '../../components/profile/SkillGapIntelligenceCard';
 
 const POPULAR_SKILLS = [
@@ -289,9 +290,12 @@ const ProfilePage = () => {
       <Card className="p-6 bg-gradient-to-r from-white to-slate-50 border-slate-200 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-brand-600 to-indigo-700 text-white flex items-center justify-center font-black text-2xl shadow-md">
-              {formData.fullName?.charAt(0)?.toUpperCase() || 'C'}
-            </div>
+            <UserAvatar
+              name={formData.fullName}
+              avatarUrl={formData.avatarUrl}
+              size="lg"
+              className="w-16 h-16 sm:w-20 sm:h-20 text-2xl shadow-md"
+            />
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-900">

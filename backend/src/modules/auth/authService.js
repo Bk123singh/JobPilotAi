@@ -521,7 +521,10 @@ class AuthService {
         },
       });
       if (!user) throw AppError.notFound('User not found');
-      return user;
+      return {
+        ...user,
+        fullName: user.profile?.fullName || user.email?.split('@')[0] || 'User',
+      };
     }
 
     // In-memory fallback
@@ -535,6 +538,7 @@ class AuthService {
           isEmailVerified: u.isEmailVerified,
           createdAt: u.createdAt,
           profile: u.profile,
+          fullName: u.profile?.fullName || u.email?.split('@')[0] || 'User',
           recruiter: u.company ? { company: u.company } : null,
         };
       }
@@ -545,7 +549,8 @@ class AuthService {
       id: userId,
       email: 'user@example.com',
       role: 'JOB_SEEKER',
-      profile: { fullName: 'Job Seeker' },
+      fullName: 'User',
+      profile: { fullName: 'User' },
     };
   }
 
@@ -592,6 +597,19 @@ class AuthService {
           },
           include: { profile: true, recruiter: { include: { company: true } } },
         });
+      } else if (user.profile && fullName && (user.profile.fullName === 'Google Candidate' || user.profile.fullName !== fullName)) {
+        await prisma.userProfile.update({
+          where: { userId: user.id },
+          data: { fullName },
+        });
+        if (avatarUrl) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { avatarUrl },
+          });
+          user.avatarUrl = avatarUrl;
+        }
+        user.profile.fullName = fullName;
       }
 
       const tokenPayload = { userId: user.id, email: user.email, role: user.role };
@@ -623,10 +641,17 @@ class AuthService {
         role,
         isEmailVerified: true,
         avatarUrl,
-        profile: { fullName, headline: 'Job Seeker' },
+        profile: { fullName, headline: role === 'JOB_SEEKER' ? 'Job Seeker' : 'Recruiter' },
         createdAt: new Date(),
       };
       memoryUsers.set(email, user);
+    } else {
+      if (fullName) {
+        user.profile = { ...(user.profile || {}), fullName };
+      }
+      if (avatarUrl) {
+        user.avatarUrl = avatarUrl;
+      }
     }
 
     const tokenPayload = { userId: user.id, email: user.email, role: user.role };

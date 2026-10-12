@@ -1,21 +1,34 @@
 import { create } from 'zustand';
 import { authApi } from '../api/authApi';
 
+const normalizeUser = (user) => {
+  if (!user) return null;
+  const fullName =
+    user.fullName ||
+    user.profile?.fullName ||
+    (user.email ? user.email.split('@')[0] : 'User');
+  return {
+    ...user,
+    fullName,
+  };
+};
+
 export const useAuthStore = create((set, get) => ({
-  user: JSON.parse(localStorage.getItem('jobpilot_user') || 'null'),
+  user: normalizeUser(JSON.parse(localStorage.getItem('jobpilot_user') || 'null')),
   accessToken: localStorage.getItem('jobpilot_access_token') || null,
   isAuthenticated: !!localStorage.getItem('jobpilot_access_token'),
   isLoading: false,
   isInitialized: false,
 
   setAuth: (user, accessToken, refreshToken = null) => {
-    localStorage.setItem('jobpilot_user', JSON.stringify(user));
+    const cleanUser = normalizeUser(user);
+    localStorage.setItem('jobpilot_user', JSON.stringify(cleanUser));
     localStorage.setItem('jobpilot_access_token', accessToken);
     if (refreshToken) {
       localStorage.setItem('jobpilot_refresh_token', refreshToken);
     }
     set({
-      user,
+      user: cleanUser,
       accessToken,
       isAuthenticated: true,
       isLoading: false,
@@ -50,7 +63,7 @@ export const useAuthStore = create((set, get) => ({
     try {
       set({ isLoading: true });
       const res = await authApi.getMe();
-      const user = res.data.user;
+      const user = normalizeUser(res.data.user);
       localStorage.setItem('jobpilot_user', JSON.stringify(user));
       set({
         user,

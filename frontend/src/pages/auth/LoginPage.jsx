@@ -10,6 +10,7 @@ import { authApi } from '../../api/authApi';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card, { CardBody } from '../../components/common/Card';
+import GoogleAuthModal from '../../components/auth/GoogleAuthModal';
 
 const loginSchema = z.object({
   email: z.string().trim().email('Please enter a valid email address'),
@@ -23,6 +24,7 @@ const LoginPage = () => {
   const { addToast } = useUIStore();
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
 
   const from = location.state?.from?.pathname || '/dashboard';
 
@@ -77,28 +79,8 @@ const LoginPage = () => {
     setValue('password', 'Password123');
   };
 
-  // Simulate Google Sign-In for testing/dev
-  const handleGoogleLoginMock = async () => {
-    setIsLoading(true);
-    try {
-      // Mock Google JWT for dev testing
-      const mockPayload = {
-        email: 'google.user@example.com',
-        name: 'Google Candidate',
-        sub: 'google_sub_123456789',
-        picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
-      };
-      const mockToken = `mock.${btoa(JSON.stringify(mockPayload))}.signature`;
-      const res = await authApi.googleAuth({ credential: mockToken, role: 'JOB_SEEKER' });
-      const { user, accessToken, refreshToken } = res.data;
-      setAuth(user, accessToken, refreshToken);
-      addToast({ message: `Signed in with Google as ${user.fullName}!`, type: 'success' });
-      navigate('/dashboard', { replace: true });
-    } catch (err) {
-      addToast({ message: 'Google sign-in failed', type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
+  const handleOpenGoogle = () => {
+    setIsGoogleModalOpen(true);
   };
 
   return (
@@ -205,9 +187,9 @@ const LoginPage = () => {
               type="button"
               variant="outline"
               size="md"
-              onClick={handleGoogleLoginMock}
+              onClick={handleOpenGoogle}
               disabled={isLoading}
-              className="w-full border-slate-300 hover:bg-slate-50 text-slate-700"
+              className="w-full border-slate-300 hover:bg-slate-50 text-slate-700 font-medium"
             >
               <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
                 <path
@@ -242,6 +224,13 @@ const LoginPage = () => {
             Create free account
           </Link>
         </p>
+
+        {/* Google Authentication Dialog */}
+        <GoogleAuthModal
+          isOpen={isGoogleModalOpen}
+          onClose={() => setIsGoogleModalOpen(false)}
+          defaultRole="JOB_SEEKER"
+        />
       </div>
     </div>
   );
