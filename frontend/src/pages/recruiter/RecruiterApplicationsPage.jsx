@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { applicationApi } from '../../api/applicationApi';
 import { jobApi } from '../../api/jobApi';
+import { openResumeFile } from '../../utils/fileViewer';
 import { useUIStore } from '../../store/useUIStore';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
@@ -434,14 +435,13 @@ const RecruiterApplicationsPage = () => {
                       {resume.title || 'Resume'} (v{resume.version || 1})
                     </span>
                     {resume.fileUrl && (
-                      <a
-                        href={resume.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-bold text-brand-600 hover:underline inline-flex items-center gap-1"
+                      <button
+                        type="button"
+                        onClick={() => openResumeFile(resume.fileUrl)}
+                        className="font-bold text-brand-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
                       >
                         View Resume <ExternalLink className="w-3 h-3" />
-                      </a>
+                      </button>
                     )}
                   </div>
 

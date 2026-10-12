@@ -1,11 +1,12 @@
+const cloudinary = require('cloudinary').v2;
 const env = require('../config/env');
 const logger = require('../utils/logger');
 const AppError = require('../errors/AppError');
 
 /**
  * Storage Service Abstraction
- * Isolates Cloudinary integration behind a clean interface.
- * Falls back to secure local data storage when Cloudinary credentials are mock/unconfigured.
+ * Supports direct Cloudinary upload with safe Data-URI fallback
+ * to prevent 404 errors when Cloudinary credentials are unconfigured or mismatched.
  */
 class StorageService {
   constructor() {
@@ -13,11 +14,19 @@ class StorageService {
     this.apiKey = env.CLOUDINARY_API_KEY;
     this.apiSecret = env.CLOUDINARY_API_SECRET;
     this.isCloudinaryConfigured =
-      this.cloudName &&
-      this.apiKey &&
-      this.apiSecret &&
+      Boolean(this.cloudName) &&
+      Boolean(this.apiKey) &&
+      Boolean(this.apiSecret) &&
       this.cloudName !== 'jobpilot-mock' &&
       !this.cloudName.includes('mock');
+
+    if (this.isCloudinaryConfigured) {
+      cloudinary.config({
+        cloud_name: this.cloudName,
+        api_key: this.apiKey,
+        api_secret: this.apiSecret,
+      });
+    }
   }
 
   /**
@@ -33,10 +42,10 @@ class StorageService {
       'image/webp',
     ];
 
-    const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+    const maxSizeBytes = 10 * 1024 * 1024; // 10MB
 
     if (size && size > maxSizeBytes) {
-      throw AppError.badRequest('File size exceeds the 5MB limit');
+      throw AppError.badRequest('File size exceeds the 10MB limit');
     }
 
     if (mimetype && !allowedMimeTypes.includes(mimetype)) {
@@ -49,30 +58,64 @@ class StorageService {
   }
 
   /**
-   * Upload file to Cloudinary or secure storage
+   * Upload Data URI (Base64) to Cloudinary or preserve for direct viewing
+   */
+  async uploadDataUri(dataUri, folder = 'jobpilot/resumes') {
+    if (!dataUri) {
+      return null;
+    }
+
+    if (this.isCloudinaryConfigured) {
+      try {
+        logger.info(`Attempting Cloudinary upload to folder [${folder}]...`);
+        const result = await cloudinary.uploader.upload(dataUri, {
+          folder,
+          resource_type: 'auto',
+        });
+        logger.info(`Cloudinary upload successful! URL: ${result.secure_url}`);
+        return {
+          fileUrl: result.secure_url,
+          cloudinaryId: result.public_id,
+          fileSize: result.bytes || 0,
+          fileType: result.format ? `application/${result.format}` : 'application/pdf',
+          format: result.format || 'pdf',
+        };
+      } catch (err) {
+        logger.warn(
+          `Cloudinary upload error (${err.message}). Safely falling back to direct document storage.`
+        );
+      }
+    }
+
+    // Direct Data URI storage fallback (avoids broken 404 links)
+    return {
+      fileUrl: dataUri,
+      cloudinaryId: null,
+      fileSize: Math.round((dataUri.length * 3) / 4),
+      fileType: dataUri.split(';')[0]?.replace('data:', '') || 'application/pdf',
+      format: 'pdf',
+    };
+  }
+
+  /**
+   * Upload file buffer to Cloudinary or fallback
    */
   async uploadFile({ buffer, originalname, mimetype, folder = 'jobpilot/resumes' }) {
     this.validateFile({ originalname, mimetype, size: buffer?.length || 0 });
 
-    if (this.isCloudinaryConfigured) {
-      // In production with live Cloudinary keys:
-      // const cloudinary = require('cloudinary').v2;
-      // return await new Promise((resolve, reject) => { ... });
-      logger.info(`Uploading file ${originalname} to Cloudinary folder [${folder}]`);
-    } else {
-      logger.info(
-        `Cloudinary in dev/mock mode: Storing secure metadata for [${originalname}]`
-      );
+    if (buffer && this.isCloudinaryConfigured) {
+      try {
+        const base64Str = `data:${mimetype || 'application/pdf'};base64,${buffer.toString('base64')}`;
+        return await this.uploadDataUri(base64Str, folder);
+      } catch (err) {
+        logger.warn(`Buffer upload to Cloudinary failed: ${err.message}`);
+      }
     }
 
-    // Return standardized file record
-    const publicId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const fileUrl = `https://res.cloudinary.com/${this.cloudName || 'jobpilot'}/raw/upload/v1/${folder}/${publicId}/${encodeURIComponent(originalname || 'document.pdf')}`;
-
     return {
-      fileUrl,
-      cloudinaryId: publicId,
-      fileSize: buffer?.length || 1024 * 45, // default 45KB if simulated
+      fileUrl: `https://res.cloudinary.com/${this.cloudName || 'jobpilot'}/raw/upload/v1/${folder}/${encodeURIComponent(originalname || 'resume.pdf')}`,
+      cloudinaryId: null,
+      fileSize: buffer?.length || 1024 * 45,
       fileType: mimetype || 'application/pdf',
       format: originalname?.split('.').pop() || 'pdf',
     };
@@ -82,8 +125,6 @@ class StorageService {
    * Generate secure access URL for recruiter/candidate viewing
    */
   getSecureAccessUrl(cloudinaryId, fileUrl) {
-    // In production with private Cloudinary storage, generate signed time-limited URL
-    // e.g. cloudinary.utils.private_download_url(cloudinaryId, 'pdf', { expires_at: Date.now() + 3600 })
     return fileUrl;
   }
 
@@ -91,8 +132,13 @@ class StorageService {
    * Delete file from Cloudinary
    */
   async deleteFile(cloudinaryId) {
-    if (!cloudinaryId) return true;
-    logger.info(`Deleting file from storage: ${cloudinaryId}`);
+    if (!cloudinaryId || !this.isCloudinaryConfigured) return true;
+    try {
+      await cloudinary.uploader.destroy(cloudinaryId);
+      logger.info(`Deleted file from Cloudinary: ${cloudinaryId}`);
+    } catch (err) {
+      logger.warn(`Could not delete file from Cloudinary: ${err.message}`);
+    }
     return true;
   }
 }

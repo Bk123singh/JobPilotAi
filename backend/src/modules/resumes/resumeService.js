@@ -157,13 +157,18 @@ class ResumeService {
     const isDbLive = await authService.isPrismaHealthy();
 
     let fileUpload = {
-      fileUrl: data.fileUrl || 'https://res.cloudinary.com/jobpilot/raw/upload/v1/jobpilot/resumes/default_resume.pdf',
-      cloudinaryId: 'cl_' + Date.now(),
+      fileUrl: data.fileUrl || '',
+      cloudinaryId: null,
       fileSize: data.fileSize || 1024 * 50,
       fileType: data.fileType || 'application/pdf',
     };
 
-    if (file) {
+    if (data.fileUrl && data.fileUrl.startsWith('data:')) {
+      const uploadRes = await storageService.uploadDataUri(data.fileUrl, `jobpilot/resumes/${userId}`);
+      if (uploadRes) {
+        fileUpload = uploadRes;
+      }
+    } else if (file) {
       fileUpload = await storageService.uploadFile({
         buffer: file.buffer,
         originalname: file.originalname,

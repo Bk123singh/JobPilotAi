@@ -24,6 +24,7 @@ import Input from '../../components/common/Input';
 import Card, { CardBody, CardHeader } from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Skeleton from '../../components/common/Skeleton';
+import { openResumeFile } from '../../utils/fileViewer';
 
 const ResumesPage = () => {
   const queryClient = useQueryClient();
@@ -116,6 +117,15 @@ const ResumesPage = () => {
     }
   };
 
+  const handleViewResume = (resume) => {
+    const url = resume.secureViewUrl || resume.fileUrl;
+    if (!url) {
+      addToast({ message: 'No file available for preview', type: 'error' });
+      return;
+    }
+    openResumeFile(url);
+  };
+
   const handleUploadSubmit = (e) => {
     e.preventDefault();
     if (!uploadTitle.trim()) {
@@ -123,16 +133,29 @@ const ResumesPage = () => {
       return;
     }
 
-    uploadMutation.mutate({
-      title: uploadTitle.trim(),
-      visibility: uploadVisibility,
-      isPrimary: uploadIsPrimary,
-      fileSize: selectedFile ? selectedFile.size : 1024 * 55,
-      fileType: selectedFile ? selectedFile.type : 'application/pdf',
-      fileUrl: selectedFile
-        ? `https://res.cloudinary.com/jobpilot/raw/upload/v1/jobpilot/resumes/${encodeURIComponent(selectedFile.name)}`
-        : 'https://res.cloudinary.com/jobpilot/raw/upload/v1/jobpilot/resumes/demo_resume.pdf',
-    });
+    if (selectedFile) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        uploadMutation.mutate({
+          title: uploadTitle.trim(),
+          visibility: uploadVisibility,
+          isPrimary: uploadIsPrimary,
+          fileSize: selectedFile.size,
+          fileType: selectedFile.type || 'application/pdf',
+          fileUrl: reader.result,
+        });
+      };
+      reader.readAsDataURL(selectedFile);
+    } else {
+      uploadMutation.mutate({
+        title: uploadTitle.trim(),
+        visibility: uploadVisibility,
+        isPrimary: uploadIsPrimary,
+        fileSize: 1024 * 55,
+        fileType: 'application/pdf',
+        fileUrl: '',
+      });
+    }
   };
 
   const handleUpdateSubmit = (e) => {
@@ -524,16 +547,15 @@ const ResumesPage = () => {
                   </Button>
                 )}
 
-                <a
-                  href={resume.secureViewUrl || resume.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleViewResume(resume)}
+                  className="text-xs min-h-[38px]"
                 >
-                  <Button variant="outline" size="sm" className="text-xs min-h-[38px]">
-                    <ExternalLink className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                    View File
-                  </Button>
-                </a>
+                  <ExternalLink className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                  View File
+                </Button>
 
                 <Button
                   variant="ghost"

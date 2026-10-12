@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Badge from '../common/Badge';
 import Button from '../common/Button';
+import { openResumeFile } from '../../utils/fileViewer';
 
 const KANBAN_COLUMNS = [
   { id: 'APPLIED', title: 'Applied', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50/40' },
@@ -188,16 +189,15 @@ const KanbanBoard = ({
                         <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 text-xs">
                           {/* Resume Link */}
                           {resume.fileUrl ? (
-                            <a
-                              href={resume.fileUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[11px] font-bold text-brand-600 hover:underline inline-flex items-center gap-1"
+                            <button
+                              type="button"
+                              onClick={() => openResumeFile(resume.fileUrl)}
+                              className="text-[11px] font-bold text-brand-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
                               title="View Resume"
                             >
                               <FileText className="w-3 h-3" />
                               Resume
-                            </a>
+                            </button>
                           ) : (
                             <span className="text-[10px] text-slate-400">No Resume</span>
                           )}
