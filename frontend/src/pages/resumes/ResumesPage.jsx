@@ -37,6 +37,7 @@ const ResumesPage = () => {
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadVisibility, setUploadVisibility] = useState('APPLICATION_ONLY');
   const [uploadIsPrimary, setUploadIsPrimary] = useState(false);
+  const [autoFillProfile, setAutoFillProfile] = useState(true);
   const [selectedFile, setSelectedFile] = useState(null);
 
   // Fetch Resumes
@@ -52,7 +53,13 @@ const ResumesPage = () => {
     mutationFn: (newResume) => resumeApi.uploadResume(newResume),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myResumes'] });
-      addToast({ message: 'Resume uploaded successfully!', type: 'success' });
+      queryClient.invalidateQueries({ queryKey: ['myProfile'] });
+      addToast({
+        message: autoFillProfile
+          ? 'Resume uploaded & profile auto-filled successfully!'
+          : 'Resume uploaded successfully!',
+        type: 'success',
+      });
       setShowUploadModal(false);
       setUploadTitle('');
       setSelectedFile(null);
@@ -61,6 +68,25 @@ const ResumesPage = () => {
     onError: (err) => {
       addToast({
         message: err.response?.data?.message || 'Failed to upload resume',
+        type: 'error',
+      });
+    },
+  });
+
+  // Autofill Profile Mutation
+  const autofillMutation = useMutation({
+    mutationFn: (id) => resumeApi.autofillProfile(id, 'MERGE'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['myResumes'] });
+      addToast({
+        message: 'Profile successfully updated with resume details!',
+        type: 'success',
+      });
+    },
+    onError: (err) => {
+      addToast({
+        message: err.response?.data?.message || 'Failed to auto-fill profile from resume',
         type: 'error',
       });
     },
@@ -143,6 +169,7 @@ const ResumesPage = () => {
           fileSize: selectedFile.size,
           fileType: selectedFile.type || 'application/pdf',
           fileUrl: reader.result,
+          autoFillProfile,
         });
       };
       reader.readAsDataURL(selectedFile);
@@ -154,6 +181,7 @@ const ResumesPage = () => {
         fileSize: 1024 * 55,
         fileType: 'application/pdf',
         fileUrl: '',
+        autoFillProfile,
       });
     }
   };
@@ -358,6 +386,26 @@ const ResumesPage = () => {
                 </div>
               </div>
 
+              {/* Auto-fill Profile Checkbox */}
+              <div className="flex items-start space-x-2.5 p-3 rounded-xl bg-brand-50/60 border border-brand-200/80">
+                <input
+                  type="checkbox"
+                  id="autoFillProfileCheck"
+                  checked={autoFillProfile}
+                  onChange={(e) => setAutoFillProfile(e.target.checked)}
+                  className="w-4 h-4 text-brand-600 rounded mt-0.5"
+                />
+                <label htmlFor="autoFillProfileCheck" className="text-xs cursor-pointer">
+                  <span className="font-bold text-brand-900 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-brand-600" />
+                    Auto-fill Profile Sections (Recommended)
+                  </span>
+                  <span className="text-slate-500 block mt-0.5">
+                    Automatically extracts your skills, work experience, education, projects, and contact info into your profile.
+                  </span>
+                </label>
+              </div>
+
               {/* Set as Primary Checkbox */}
               <div className="flex items-center space-x-2 pt-1">
                 <input
@@ -546,6 +594,18 @@ const ResumesPage = () => {
                     Make Primary
                   </Button>
                 )}
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => autofillMutation.mutate(resume.id)}
+                  isLoading={autofillMutation.isPending && autofillMutation.variables === resume.id}
+                  className="text-xs font-semibold min-h-[38px] bg-brand-50 hover:bg-brand-100 text-brand-700 border-brand-200"
+                  title="Auto-fill candidate profile with details from this resume"
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-1 text-brand-600" />
+                  Auto-Fill Profile
+                </Button>
 
                 <Button
                   variant="outline"

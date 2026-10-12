@@ -2,6 +2,8 @@ const { prisma } = require('../../config/db');
 const AppError = require('../../errors/AppError');
 const authService = require('../auth/authService');
 const storageService = require('../../services/storageService');
+const resumeParserService = require('../../services/resumeParserService');
+const profileService = require('../profiles/profileService');
 const logger = require('../../utils/logger');
 
 // Fallback in-memory resume store
@@ -151,6 +153,92 @@ class ResumeService {
   }
 
   /**
+   * Parse resume document without persisting (for review & confirmation modal)
+   */
+  async parseResumeDocument(data, file) {
+    let rawText = data?.rawText || '';
+
+    if (!rawText && (data?.fileUrl || file)) {
+      rawText = await resumeParserService.extractText({
+        buffer: file?.buffer,
+        mimetype: file?.mimetype || data?.fileType,
+        originalname: file?.originalname || data?.title || 'resume.pdf',
+        dataUri: data?.fileUrl,
+        rawText: data?.rawText,
+      });
+    }
+
+    const parsedData = await resumeParserService.parseResume(rawText);
+    return {
+      rawText,
+      parsedData,
+    };
+  }
+
+  /**
+   * Auto-fill candidate profile from an existing resume
+   */
+  async autofillProfileFromResume(userId, resumeId, strategy = 'MERGE', ipAddress = '', userAgent = '') {
+    const isDbLive = await authService.isPrismaHealthy();
+    let resume = null;
+
+    if (isDbLive) {
+      resume = await prisma.resume.findUnique({
+        where: { id: resumeId },
+      });
+    } else {
+      resume = memoryResumes.get(resumeId);
+    }
+
+    if (!resume) {
+      throw AppError.notFound('Resume not found');
+    }
+
+    if (resume.userId !== userId) {
+      throw AppError.forbidden('You do not have permission to access this resume');
+    }
+
+    let parsedData = resume.parsedData || {};
+    let rawText = resume.rawText || '';
+
+    if (!parsedData || Object.keys(parsedData).length === 0 || !parsedData.skills?.length) {
+      if (!rawText && resume.fileUrl && resume.fileUrl.startsWith('data:')) {
+        rawText = await resumeParserService.extractText({
+          dataUri: resume.fileUrl,
+          mimetype: resume.fileType,
+        });
+      }
+      if (rawText) {
+        parsedData = await resumeParserService.parseResume(rawText);
+        if (isDbLive) {
+          await prisma.resume.update({
+            where: { id: resumeId },
+            data: { parsedData, rawText },
+          });
+        } else {
+          resume.parsedData = parsedData;
+          resume.rawText = rawText;
+          memoryResumes.set(resumeId, resume);
+        }
+      }
+    }
+
+    const updatedProfile = await profileService.autoFillFromResume(
+      userId,
+      parsedData,
+      strategy,
+      ipAddress,
+      userAgent
+    );
+
+    return {
+      message: 'Profile auto-filled successfully from resume',
+      parsedData,
+      profile: updatedProfile,
+    };
+  }
+
+  /**
    * Upload & create new resume
    */
   async createResume(userId, data, file, ipAddress, userAgent) {
@@ -177,6 +265,31 @@ class ResumeService {
       });
     }
 
+    // Extract text and parse resume
+    let rawText = data.rawText || '';
+    if (!rawText && (data.fileUrl || file)) {
+      rawText = await resumeParserService.extractText({
+        buffer: file?.buffer,
+        mimetype: file?.mimetype || fileUpload.fileType,
+        originalname: file?.originalname || data.title,
+        dataUri: data.fileUrl,
+        rawText: data.rawText,
+      });
+    }
+
+    let parsedData = {};
+    if (rawText) {
+      parsedData = await resumeParserService.parseResume(rawText);
+    }
+
+    // Dynamic quality score calculation
+    let qualityScore = 70;
+    if (parsedData.fullName && parsedData.headline) qualityScore += 10;
+    if (parsedData.phone || parsedData.location) qualityScore += 5;
+    if (Array.isArray(parsedData.skills) && parsedData.skills.length >= 5) qualityScore += 10;
+    if (Array.isArray(parsedData.experience) && parsedData.experience.length >= 1) qualityScore += 5;
+    qualityScore = Math.min(100, qualityScore);
+
     const existingResumes = await this.listUserResumes(userId);
     const isFirstResume = existingResumes.length === 0;
     const shouldBePrimary = data.isPrimary !== undefined ? data.isPrimary : isFirstResume;
@@ -187,8 +300,10 @@ class ResumeService {
     );
     const version = sameTitleResumes.length + 1;
 
+    let createdResume;
+
     if (isDbLive) {
-      return await prisma.$transaction(async (tx) => {
+      createdResume = await prisma.$transaction(async (tx) => {
         if (shouldBePrimary) {
           await tx.resume.updateMany({
             where: { userId },
@@ -207,10 +322,23 @@ class ResumeService {
             isPrimary: shouldBePrimary,
             visibility: data.visibility || 'APPLICATION_ONLY',
             version,
-            rawText: data.rawText || '',
-            qualityScore: 90, // Baseline quality score placeholder
+            rawText: rawText || '',
+            parsedData: parsedData || {},
+            qualityScore,
           },
         });
+
+        // Insert extracted skills to ResumeSkill table
+        if (Array.isArray(parsedData.skills) && parsedData.skills.length > 0) {
+          await tx.resumeSkill.createMany({
+            data: parsedData.skills.map((skillName) => ({
+              resumeId: newResume.id,
+              skillName,
+              category: 'Extracted',
+            })),
+            skipDuplicates: true,
+          });
+        }
 
         await tx.auditLog.create({
           data: {
@@ -220,44 +348,57 @@ class ResumeService {
             resourceId: newResume.id,
             ipAddress,
             userAgent,
-            metadata: { title: newResume.title, version },
+            metadata: { title: newResume.title, version, autoFilled: Boolean(data.autoFillProfile) },
           },
         });
 
         return newResume;
       });
-    }
-
-    // In-memory fallback
-    if (shouldBePrimary) {
-      for (const res of memoryResumes.values()) {
-        if (res.userId === userId) {
-          res.isPrimary = false;
+    } else {
+      // In-memory fallback
+      if (shouldBePrimary) {
+        for (const res of memoryResumes.values()) {
+          if (res.userId === userId) {
+            res.isPrimary = false;
+          }
         }
       }
+
+      const resumeId = `resume-${Date.now()}`;
+      createdResume = {
+        id: resumeId,
+        userId,
+        title: data.title,
+        fileUrl: fileUpload.fileUrl,
+        cloudinaryId: fileUpload.cloudinaryId,
+        fileSize: fileUpload.fileSize,
+        fileType: fileUpload.fileType,
+        isPrimary: shouldBePrimary,
+        visibility: data.visibility || 'APPLICATION_ONLY',
+        version,
+        qualityScore,
+        rawText: rawText || '',
+        parsedData: parsedData || {},
+        skills: (parsedData.skills || []).map((s) => ({ skillName: s, category: 'Extracted' })),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      memoryResumes.set(resumeId, createdResume);
     }
 
-    const resumeId = `resume-${Date.now()}`;
-    const newResume = {
-      id: resumeId,
-      userId,
-      title: data.title,
-      fileUrl: fileUpload.fileUrl,
-      cloudinaryId: fileUpload.cloudinaryId,
-      fileSize: fileUpload.fileSize,
-      fileType: fileUpload.fileType,
-      isPrimary: shouldBePrimary,
-      visibility: data.visibility || 'APPLICATION_ONLY',
-      version,
-      qualityScore: 90,
-      rawText: data.rawText || '',
-      parsedData: {},
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    // Auto-fill profile if requested by user
+    if (data.autoFillProfile && Object.keys(parsedData).length > 0) {
+      await profileService.autoFillFromResume(
+        userId,
+        parsedData,
+        data.strategy || 'MERGE',
+        ipAddress,
+        userAgent
+      );
+    }
 
-    memoryResumes.set(resumeId, newResume);
-    return newResume;
+    return createdResume;
   }
 
   /**

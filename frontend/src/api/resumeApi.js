@@ -30,4 +30,14 @@ export const resumeApi = {
     const res = await api.delete(`/resumes/${id}`);
     return res.data;
   },
+
+  parseResume: async (resumeData) => {
+    const res = await api.post('/resumes/parse', resumeData);
+    return res.data;
+  },
+
+  autofillProfile: async (id, strategy = 'MERGE') => {
+    const res = await api.post(`/resumes/${id}/autofill-profile`, { strategy });
+    return res.data;
+  },
 };

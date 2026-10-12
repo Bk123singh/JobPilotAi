@@ -30,6 +30,7 @@ import Badge from '../../components/common/Badge';
 import Skeleton from '../../components/common/Skeleton';
 import UserAvatar from '../../components/common/UserAvatar';
 import SkillGapIntelligenceCard from '../../components/profile/SkillGapIntelligenceCard';
+import ResumeAutofillModal from '../../components/profile/ResumeAutofillModal';
 
 const POPULAR_SKILLS = [
   'JavaScript',
@@ -52,6 +53,7 @@ const ProfilePage = () => {
   const queryClient = useQueryClient();
   const { addToast } = useUIStore();
 
+  const [showAutofillModal, setShowAutofillModal] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
   const [skillInput, setSkillInput] = useState('');
   const [newExp, setNewExp] = useState({
@@ -141,6 +143,33 @@ const ProfilePage = () => {
       });
     }
   }, [data]);
+
+  const handleProfileAutofilled = (updatedProfile) => {
+    if (updatedProfile) {
+      setFormData({
+        fullName: updatedProfile.fullName || '',
+        headline: updatedProfile.headline || '',
+        phone: updatedProfile.phone || '',
+        location: updatedProfile.location || '',
+        bio: updatedProfile.bio || '',
+        website: updatedProfile.website || '',
+        githubUrl: updatedProfile.githubUrl || '',
+        linkedinUrl: updatedProfile.linkedinUrl || '',
+        skills: updatedProfile.skills || [],
+        education: updatedProfile.education || [],
+        experience: updatedProfile.experience || [],
+        projects: updatedProfile.projects || [],
+        certifications: updatedProfile.certifications || [],
+        careerPreferences: updatedProfile.careerPreferences || {
+          desiredRoles: [],
+          preferredLocations: [],
+          remotePreference: 'ANY',
+          minExpectedSalary: 0,
+          currency: 'USD',
+        },
+      });
+    }
+  };
 
   // Save mutation
   const updateMutation = useMutation({
@@ -315,27 +344,40 @@ const ProfilePage = () => {
             </div>
           </div>
 
-          {/* Completeness Meter */}
-          <div className="sm:text-right space-y-2 max-w-xs sm:self-center">
-            <div className="flex items-center sm:justify-end gap-2">
-              <span className="text-xs font-semibold text-slate-500 uppercase">
-                Profile Completeness:
-              </span>
-              <span className="text-sm font-extrabold text-brand-600">
-                {completeness}%
-              </span>
+          {/* Completeness Meter & Quick Action */}
+          <div className="flex flex-col sm:items-end gap-3 max-w-sm sm:self-center">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowAutofillModal(true)}
+              className="gap-2 bg-brand-50 hover:bg-brand-100 text-brand-700 border-brand-200/80 shadow-xs font-semibold"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-brand-600" />
+              ⚡ Auto-fill from Resume
+            </Button>
+
+            <div className="w-full sm:text-right space-y-1.5">
+              <div className="flex items-center sm:justify-end gap-2">
+                <span className="text-xs font-semibold text-slate-500 uppercase">
+                  Profile Completeness:
+                </span>
+                <span className="text-sm font-extrabold text-brand-600">
+                  {completeness}%
+                </span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-brand-600 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${completeness}%` }}
+                />
+              </div>
+              {suggestions.length > 0 && (
+                <p className="text-[11px] text-amber-700 font-medium truncate">
+                  💡 Tip: {suggestions[0]}
+                </p>
+              )}
             </div>
-            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-brand-600 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${completeness}%` }}
-              />
-            </div>
-            {suggestions.length > 0 && (
-              <p className="text-[11px] text-amber-700 font-medium truncate">
-                💡 Tip: {suggestions[0]}
-              </p>
-            )}
           </div>
         </div>
       </Card>
@@ -998,6 +1040,13 @@ const ProfilePage = () => {
           </Button>
         </div>
       </form>
+
+      {/* Auto-Fill from Resume Modal */}
+      <ResumeAutofillModal
+        isOpen={showAutofillModal}
+        onClose={() => setShowAutofillModal(false)}
+        onProfileUpdated={handleProfileAutofilled}
+      />
     </div>
   );
 };

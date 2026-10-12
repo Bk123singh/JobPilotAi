@@ -83,6 +83,34 @@ const deleteResume = async (req, res, next) => {
   }
 };
 
+const parseResume = async (req, res, next) => {
+  try {
+    const result = await resumeService.parseResumeDocument(req.body, req.file || null);
+    return successResponse(res, 200, result, 'Resume parsed successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+const autofillProfile = async (req, res, next) => {
+  try {
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || '';
+
+    const result = await resumeService.autofillProfileFromResume(
+      req.user.id,
+      req.params.id,
+      req.body?.strategy || 'MERGE',
+      ipAddress,
+      userAgent
+    );
+
+    return successResponse(res, 200, result, 'Profile auto-filled successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   listResumes,
   getResume,
@@ -90,4 +118,6 @@ module.exports = {
   updateResume,
   setPrimary,
   deleteResume,
+  parseResume,
+  autofillProfile,
 };

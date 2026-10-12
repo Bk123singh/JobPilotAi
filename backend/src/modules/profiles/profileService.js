@@ -299,6 +299,116 @@ class ProfileService {
   }
 
   /**
+   * Auto-fill profile from parsed resume data
+   * @param {string} userId
+   * @param {Object} resumeData - Parsed resume object
+   * @param {'MERGE'|'REPLACE'} strategy
+   */
+  async autoFillFromResume(userId, resumeData, strategy = 'MERGE', ipAddress = '', userAgent = '') {
+    const current = await this.getProfileByUserId(userId);
+
+    let updatedData = {};
+
+    if (strategy === 'REPLACE') {
+      updatedData = {
+        fullName: resumeData.fullName || current.fullName,
+        headline: resumeData.headline || current.headline,
+        phone: resumeData.phone || current.phone,
+        location: resumeData.location || current.location,
+        bio: resumeData.bio || current.bio,
+        website: resumeData.website || current.website,
+        githubUrl: resumeData.githubUrl || current.githubUrl,
+        linkedinUrl: resumeData.linkedinUrl || current.linkedinUrl,
+        skills: resumeData.skills?.length ? resumeData.skills : current.skills,
+        experience: resumeData.experience?.length ? resumeData.experience : current.experience,
+        education: resumeData.education?.length ? resumeData.education : current.education,
+        projects: resumeData.projects?.length ? resumeData.projects : current.projects,
+        certifications: resumeData.certifications?.length ? resumeData.certifications : current.certifications,
+      };
+    } else {
+      // Default: MERGE (Smart non-destructive blend)
+      const existingSkills = Array.isArray(current.skills) ? current.skills : [];
+      const newSkills = Array.isArray(resumeData.skills) ? resumeData.skills : [];
+      const existingLower = new Set(existingSkills.map((s) => s.toLowerCase()));
+      const mergedSkills = [...existingSkills];
+      for (const s of newSkills) {
+        if (!existingLower.has(s.toLowerCase())) {
+          mergedSkills.push(s);
+          existingLower.add(s.toLowerCase());
+        }
+      }
+
+      const existingExp = Array.isArray(current.experience) ? current.experience : [];
+      const newExp = Array.isArray(resumeData.experience) ? resumeData.experience : [];
+      const mergedExp = [...existingExp];
+      for (const ne of newExp) {
+        const alreadyExists = existingExp.some(
+          (e) => e.company?.toLowerCase() === ne.company?.toLowerCase() &&
+                 e.title?.toLowerCase() === ne.title?.toLowerCase()
+        );
+        if (!alreadyExists) {
+          mergedExp.push({ ...ne, id: ne.id || `exp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}` });
+        }
+      }
+
+      const existingEdu = Array.isArray(current.education) ? current.education : [];
+      const newEdu = Array.isArray(resumeData.education) ? resumeData.education : [];
+      const mergedEdu = [...existingEdu];
+      for (const ned of newEdu) {
+        const alreadyExists = existingEdu.some(
+          (ed) => ed.institution?.toLowerCase() === ned.institution?.toLowerCase() &&
+                  ed.degree?.toLowerCase() === ned.degree?.toLowerCase()
+        );
+        if (!alreadyExists) {
+          mergedEdu.push({ ...ned, id: ned.id || `edu-${Date.now()}-${Math.random().toString(36).substr(2, 5)}` });
+        }
+      }
+
+      const existingProj = Array.isArray(current.projects) ? current.projects : [];
+      const newProj = Array.isArray(resumeData.projects) ? resumeData.projects : [];
+      const mergedProj = [...existingProj];
+      for (const np of newProj) {
+        const alreadyExists = existingProj.some(
+          (p) => p.title?.toLowerCase() === np.title?.toLowerCase()
+        );
+        if (!alreadyExists) {
+          mergedProj.push({ ...np, id: np.id || `proj-${Date.now()}-${Math.random().toString(36).substr(2, 5)}` });
+        }
+      }
+
+      const existingCert = Array.isArray(current.certifications) ? current.certifications : [];
+      const newCert = Array.isArray(resumeData.certifications) ? resumeData.certifications : [];
+      const mergedCert = [...existingCert];
+      for (const nc of newCert) {
+        const alreadyExists = existingCert.some(
+          (c) => c.name?.toLowerCase() === nc.name?.toLowerCase()
+        );
+        if (!alreadyExists) {
+          mergedCert.push({ ...nc, id: nc.id || `cert-${Date.now()}-${Math.random().toString(36).substr(2, 5)}` });
+        }
+      }
+
+      updatedData = {
+        fullName: resumeData.fullName || current.fullName,
+        headline: resumeData.headline || current.headline,
+        phone: resumeData.phone || current.phone,
+        location: resumeData.location || current.location,
+        bio: resumeData.bio || current.bio,
+        website: resumeData.website || current.website,
+        githubUrl: resumeData.githubUrl || current.githubUrl,
+        linkedinUrl: resumeData.linkedinUrl || current.linkedinUrl,
+        skills: mergedSkills,
+        experience: mergedExp,
+        education: mergedEdu,
+        projects: mergedProj,
+        certifications: mergedCert,
+      };
+    }
+
+    return await this.updateProfile(userId, updatedData, ipAddress, userAgent);
+  }
+
+  /**
    * Get public candidate profile (for authorized recruiters)
    */
   async getPublicProfile(targetUserId) {
