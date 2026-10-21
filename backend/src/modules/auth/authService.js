@@ -597,19 +597,42 @@ class AuthService {
           },
           include: { profile: true, recruiter: { include: { company: true } } },
         });
-      } else if (user.profile && fullName && (user.profile.fullName === 'Google Candidate' || user.profile.fullName !== fullName)) {
-        await prisma.userProfile.update({
-          where: { userId: user.id },
-          data: { fullName },
-        });
-        if (avatarUrl) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { avatarUrl },
+      } else {
+        if (!user.profile) {
+          user.profile = await prisma.userProfile.create({
+            data: {
+              userId: user.id,
+              fullName,
+              headline: user.role === 'JOB_SEEKER' ? 'Job Seeker' : 'Recruiter',
+            },
           });
+        } else if (fullName && (user.profile.fullName === 'Google Candidate' || user.profile.fullName !== fullName)) {
+          await prisma.userProfile.update({
+            where: { userId: user.id },
+            data: { fullName },
+          });
+          user.profile.fullName = fullName;
+        }
+
+        const userUpdates = {};
+        if (!user.isEmailVerified) {
+          userUpdates.isEmailVerified = true;
+          user.isEmailVerified = true;
+        }
+        if (!user.googleId && googleId) {
+          userUpdates.googleId = googleId;
+          user.googleId = googleId;
+        }
+        if (avatarUrl && (!user.avatarUrl || user.avatarUrl !== avatarUrl)) {
+          userUpdates.avatarUrl = avatarUrl;
           user.avatarUrl = avatarUrl;
         }
-        user.profile.fullName = fullName;
+        if (Object.keys(userUpdates).length > 0) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: userUpdates,
+          });
+        }
       }
 
       const tokenPayload = { userId: user.id, email: user.email, role: user.role };
