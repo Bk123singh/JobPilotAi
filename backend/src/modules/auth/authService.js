@@ -568,7 +568,10 @@ class AuthService {
       throw AppError.badRequest('Malformed Google credential');
     }
 
-    const email = (googlePayload.email || 'google.user@example.com').toLowerCase();
+    if (!googlePayload || !googlePayload.email) {
+      throw AppError.badRequest('Invalid Google credential: email address is missing');
+    }
+    const email = googlePayload.email.toLowerCase();
     const fullName = googlePayload.name || email.split('@')[0];
     const avatarUrl = googlePayload.picture || null;
     const googleId = googlePayload.sub || `g-${Date.now()}`;
@@ -606,7 +609,7 @@ class AuthService {
               headline: user.role === 'JOB_SEEKER' ? 'Job Seeker' : 'Recruiter',
             },
           });
-        } else if (fullName && (user.profile.fullName === 'Google Candidate' || user.profile.fullName !== fullName)) {
+        } else if (fullName && user.profile.fullName !== fullName) {
           await prisma.userProfile.update({
             where: { userId: user.id },
             data: { fullName },
