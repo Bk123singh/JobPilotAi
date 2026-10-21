@@ -17,5 +17,7 @@ router.post('/refresh', validate({ body: refreshTokenSchema }), authController.r
 router.post('/logout', optionalAuthenticate, authController.logout);
 router.get('/me', authenticate, authController.getMe);
 router.post('/google', authRateLimiter, validate({ body: googleAuthSchema }), authController.googleAuth);
+router.get('/google', authController.googleRedirect);
+router.get('/google/callback', authController.googleCallback);
 
 module.exports = router;

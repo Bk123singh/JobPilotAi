@@ -8,6 +8,7 @@ import RoleRoute from './RoleRoute';
 import Home from '../pages/Home';
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
+import AuthCallbackPage from '../pages/auth/AuthCallbackPage';
 import Dashboard from '../pages/Dashboard';
 import ProfilePage from '../pages/profile/ProfilePage';
 import ResumesPage from '../pages/resumes/ResumesPage';
@@ -43,6 +44,7 @@ const AppRoutes = () => {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
 

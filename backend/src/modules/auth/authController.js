@@ -126,6 +126,56 @@ const googleAuth = async (req, res, next) => {
   }
 };
 
+const googleRedirect = (req, res) => {
+  const role = req.query.role === 'RECRUITER' ? 'RECRUITER' : 'JOB_SEEKER';
+  const clientId = env.GOOGLE_CLIENT_ID;
+  const callbackUrl = env.GOOGLE_CALLBACK_URL;
+  const state = encodeURIComponent(JSON.stringify({ role, from: req.query.from || '/dashboard' }));
+
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+    callbackUrl
+  )}&response_type=code&scope=openid%20email%20profile&prompt=select_account&state=${state}`;
+
+  return res.redirect(googleAuthUrl);
+};
+
+const googleCallback = async (req, res, next) => {
+  const frontendUrl = env.FRONTEND_URL || 'http://localhost:5173';
+  try {
+    const { code, state, error } = req.query;
+
+    if (error || !code) {
+      return res.redirect(
+        `${frontendUrl}/login?error=${encodeURIComponent(error || 'Google login was cancelled')}`
+      );
+    }
+
+    let role = 'JOB_SEEKER';
+    if (state) {
+      try {
+        const parsedState = JSON.parse(decodeURIComponent(state));
+        if (parsedState.role) role = parsedState.role;
+      } catch (e) {
+        // use default role
+      }
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || '';
+
+    const result = await authService.handleGoogleOAuthCode(code, role, ipAddress, userAgent);
+
+    res.cookie('refreshToken', result.refreshToken, COOKIE_OPTIONS);
+
+    return res.redirect(
+      `${frontendUrl}/auth/callback?token=${encodeURIComponent(result.accessToken)}&role=${result.user.role}`
+    );
+  } catch (error) {
+    const errorMsg = error.message || 'Google authentication failed';
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(errorMsg)}`);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -133,4 +183,6 @@ module.exports = {
   logout,
   getMe,
   googleAuth,
+  googleRedirect,
+  googleCallback,
 };

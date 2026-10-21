@@ -555,27 +555,9 @@ class AuthService {
   }
 
   /**
-   * Google OAuth handler
+   * Helper to find or create user for OAuth authentication
    */
-  async googleAuth({ credential, role = 'JOB_SEEKER' }, ipAddress, userAgent) {
-    let googlePayload = null;
-    try {
-      const base64Url = credential.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = Buffer.from(base64, 'base64').toString('utf8');
-      googlePayload = JSON.parse(jsonPayload);
-    } catch {
-      throw AppError.badRequest('Malformed Google credential');
-    }
-
-    if (!googlePayload || !googlePayload.email) {
-      throw AppError.badRequest('Invalid Google credential: email address is missing');
-    }
-    const email = googlePayload.email.toLowerCase();
-    const fullName = googlePayload.name || email.split('@')[0];
-    const avatarUrl = googlePayload.picture || null;
-    const googleId = googlePayload.sub || `g-${Date.now()}`;
-
+  async loginOrRegisterOAuthUser({ email, fullName, avatarUrl, googleId, role = 'JOB_SEEKER' }) {
     const isDbLive = await this.isPrismaHealthy();
     if (isDbLive) {
       let user = await prisma.user.findFirst({
@@ -696,6 +678,95 @@ class AuthService {
       accessToken,
       refreshToken,
     };
+  }
+
+  /**
+   * Google GIS ID Token handler
+   */
+  async googleAuth({ credential, role = 'JOB_SEEKER' }, ipAddress, userAgent) {
+    let googlePayload = null;
+    try {
+      const base64Url = credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = Buffer.from(base64, 'base64').toString('utf8');
+      googlePayload = JSON.parse(jsonPayload);
+    } catch {
+      throw AppError.badRequest('Malformed Google credential');
+    }
+
+    if (!googlePayload || !googlePayload.email) {
+      throw AppError.badRequest('Invalid Google credential: email address is missing');
+    }
+    const email = googlePayload.email.toLowerCase();
+    const fullName = googlePayload.name || email.split('@')[0];
+    const avatarUrl = googlePayload.picture || null;
+    const googleId = googlePayload.sub || `g-${Date.now()}`;
+
+    return this.loginOrRegisterOAuthUser({ email, fullName, avatarUrl, googleId, role });
+  }
+
+  /**
+   * Google OAuth 2.0 Authorization Code exchange handler
+   */
+  async handleGoogleOAuthCode(code, role = 'JOB_SEEKER', ipAddress, userAgent) {
+    const tokenEndpoint = 'https://oauth2.googleapis.com/token';
+    const params = new URLSearchParams({
+      code,
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: env.GOOGLE_CALLBACK_URL,
+      grant_type: 'authorization_code',
+    });
+
+    const tokenRes = await fetch(tokenEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+
+    if (!tokenRes.ok) {
+      const errText = await tokenRes.text();
+      throw AppError.badRequest(`Failed to exchange Google code: ${errText}`);
+    }
+
+    const tokenData = await tokenRes.json();
+    let email = null;
+    let fullName = null;
+    let avatarUrl = null;
+    let googleId = null;
+
+    if (tokenData.id_token) {
+      try {
+        const base64Url = tokenData.id_token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
+        email = payload.email?.toLowerCase();
+        fullName = payload.name || email?.split('@')[0];
+        avatarUrl = payload.picture || null;
+        googleId = payload.sub;
+      } catch (e) {
+        // id_token parse error, fallback to userinfo
+      }
+    }
+
+    if (!email && tokenData.access_token) {
+      const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+      if (userinfoRes.ok) {
+        const userInfo = await userinfoRes.json();
+        email = userInfo.email?.toLowerCase();
+        fullName = userInfo.name || email?.split('@')[0];
+        avatarUrl = userInfo.picture || null;
+        googleId = userInfo.sub;
+      }
+    }
+
+    if (!email) {
+      throw AppError.badRequest('Unable to retrieve user email from Google.');
+    }
+
+    return this.loginOrRegisterOAuthUser({ email, fullName, avatarUrl, googleId, role });
   }
 }
 

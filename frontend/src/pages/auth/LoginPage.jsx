@@ -27,6 +27,15 @@ const LoginPage = () => {
 
   const from = location.state?.from?.pathname || '/dashboard';
 
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const error = params.get('error');
+    if (error) {
+      setServerError(error);
+      addToast({ message: error, type: 'error' });
+    }
+  }, [location.search, addToast]);
+
   const {
     register,
     handleSubmit,
